@@ -35,7 +35,7 @@ CREATE DATABASE upskill_test OWNER upskill;
 | `npm run db:seed` | Wipe and re-import the seed |
 | `npm run move-learner -- s1 pune` | Move a learner to another center |
 
-**The demo clock.** The seed's dates are fixed and its last activity is 5 Oct 2026. `.env.example` pins "today" to 6 Oct with `AS_OF`, and the top bar says so. Remove `AS_OF` to use the real clock; every seeded learner will then be at risk, which is correct for data that old.
+**The date.** The app uses the real date, so "last active", on-track or at-risk, and the 7-day window all move on their own as days pass. The seed's dates are fixed and its last activity is 5 Oct 2026, so on any later day its three enrolled learners read as at risk until a lesson is logged. To see the seed as the screenshots show it, set `AS_OF=2026-10-06T10:00:00+05:30` in `.env`; the top bar then carries a "demo clock" tag.
 
 ## What is built
 

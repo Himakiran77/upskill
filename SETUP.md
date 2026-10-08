@@ -85,7 +85,7 @@ The other settings can stay as they are:
 | Setting | Meaning |
 | --- | --- |
 | `PORT` | Port for the backend. Default 4000. |
-| `AS_OF` | Pins "today" to 6 Oct 2026 so the seed data reads as intended. Remove the line to use the real date. |
+| `AS_OF` | Optional, and off by default: the app uses the real date. Uncomment it to pin "today" to 6 Oct 2026 and see the seed data as the screenshots show it. |
 | `DEFAULT_COACH_ID` | The coach the app signs in as. Leave as `coach-meera`. |
 
 ## 4. Install
@@ -174,6 +174,6 @@ Runs 66 tests. The API tests use `TEST_DATABASE_URL` and wipe that database on e
 | `Sign in as a coach to continue` | The seed is not loaded, or `DEFAULT_COACH_ID` is missing from `.env`. Run `npm run db:seed`. |
 | `EADDRINUSE` on port 4000 | Something else is using the port. Change `PORT` in `.env` and restart `npm run dev`. |
 | The page says "The dashboard did not load" | The backend is not running or cannot reach the database. Open http://localhost:4000/api/health, then read the backend's terminal output. |
-| Every learner is at risk | `AS_OF` was removed from `.env`, so the 2026 seed is being read on today's date. Put the line back. |
+| Every seeded learner is at risk | Expected. The seed's last activity is 5 Oct 2026 and the app uses the real date. Log a lesson to bring a learner back on track, or set `AS_OF` in `.env` to view the seed as of 6 Oct 2026. |
 
 After changing `.env`, stop the backend with Ctrl+C and start it again; it reads the file only at startup.

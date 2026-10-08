@@ -17,7 +17,10 @@ export type {
 export type StudentSummary = Pick<
   StudentView,
   'id' | 'name' | 'status' | 'goals' | 'earnedSkills' | 'activeDays' | 'activity' | 'daysSinceActive' | 'atRiskCourses'
-> & { coursesInProgress: number };
+> & {
+  coursesInProgress: number;
+  courses: Pick<StudentView['courses'][number], 'courseId' | 'title' | 'percent' | 'state'>[];
+};
 
 export interface Session {
   coach: { id: string; name: string };

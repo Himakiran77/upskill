@@ -3,25 +3,31 @@
 :root {
   --paper: #f1f4f0;
   --surface: #ffffff;
+  --shade: #f8faf7; /* card headers, quiet fills */
   --ink: #14221d;
   --ink-soft: #55645d;
   --line: #d7dfd8;
+  --line-strong: #bccabf;
 
   --board: #163d34; /* blackboard green: top bar, the recommendation, progress */
   --board-ink: #eef5f0;
   --board-soft: #a8c5b9;
+  --board-tint: #e2ece7;
 
   --risk: #b3261e;
   --risk-tint: #fbe8e5;
   --track: #1a7550;
   --track-tint: #e0f1e8;
+  --track-line: #b5dcc7;
   --sun: #f0b323; /* chalk yellow: days a learner was active, the main action */
+  --sun-tint: #fdf2d0;
   --sun-deep: #7a5200;
 
   --display: 'Bricolage Grotesque Variable', 'Hanken Grotesk Variable', system-ui, sans-serif;
   --body: 'Hanken Grotesk Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --radius: 10px;
+  --radius: 14px;
+  --border: 1.5px solid var(--line);
   --gutter: 16px;
 }
 
@@ -51,6 +57,7 @@ p,
 ul,
 ol,
 dl,
+dt,
 dd {
   margin: 0;
   padding: 0;
@@ -84,6 +91,10 @@ input {
 
 .muted {
   color: var(--ink-soft);
+}
+
+.icon {
+  flex: none;
 }
 
 /* --- Top bar ------------------------------------------------------------- */
@@ -153,7 +164,7 @@ input {
 @media (min-width: 900px) {
   .shell {
     display: grid;
-    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+    grid-template-columns: minmax(340px, 400px) minmax(0, 1fr);
     align-items: start;
   }
 
@@ -167,16 +178,16 @@ input {
   }
 
   .shell__detail {
-    padding: 28px 32px 48px;
+    padding: 28px 32px 56px;
   }
 
   .roster {
     position: sticky;
     top: 0;
     max-height: 100vh;
-    overflow-y: auto;
-    border-right: 1px solid var(--line);
     min-height: calc(100vh - 52px);
+    overflow-y: auto;
+    border-right: var(--border);
   }
 
   .back {
@@ -184,131 +195,26 @@ input {
   }
 }
 
-/* --- Roster -------------------------------------------------------------- */
-
-.roster {
-  background: var(--surface);
-}
-
-.roster__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px var(--gutter) 12px;
-}
-
-.roster__head h2 {
-  font-family: var(--display);
-  font-size: 1.25rem;
-  font-weight: 650;
-}
-
-.roster__empty {
-  padding: 8px var(--gutter) 24px;
-  color: var(--ink-soft);
-}
-
-.segmented {
-  display: inline-flex;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--paper);
-}
-
-.segmented button {
-  min-height: 36px;
-  padding: 4px 14px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.segmented button[aria-pressed='true'] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 0 0 1px var(--line);
-}
-
-.learner {
-  display: grid;
-  gap: 6px;
-  padding: 14px var(--gutter) 14px calc(var(--gutter) - 4px);
-  border-top: 1px solid var(--line);
-  border-left: 4px solid transparent;
-  color: inherit;
-  text-decoration: none;
-}
-
-a.learner:hover {
-  background: var(--paper);
-}
-
-.learner--at_risk {
-  border-left-color: var(--risk);
-}
-
-.learner[aria-current='page'] {
-  background: var(--paper);
-  box-shadow: inset 0 0 0 2px var(--board);
-  border-left-color: var(--board);
-}
-
-.learner--at_risk[aria-current='page'] {
-  border-left-color: var(--risk);
-}
-
-.learner__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.learner__name {
-  font-family: var(--display);
-  font-size: 1.0625rem;
-  font-weight: 650;
-}
-
-.learner__reason {
-  font-size: 0.9375rem;
-  color: var(--ink-soft);
-}
-
-.learner--at_risk .learner__reason {
-  color: var(--risk);
-}
-
-.learner__week {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.875rem;
-  color: var(--ink-soft);
-}
-
-.learner__skills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.875rem;
-}
-
 /* --- Small parts --------------------------------------------------------- */
 
 .pill {
+  display: inline-flex;
   flex: none;
-  padding: 2px 10px;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border: 1px solid transparent;
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 650;
   white-space: nowrap;
+}
+
+.pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .pill--at_risk {
@@ -317,15 +223,16 @@ a.learner:hover {
 }
 
 .pill--on_track {
+  border-color: var(--track-line);
   background: var(--track-tint);
   color: var(--track);
 }
 
 .pill--completed,
 .pill--no_active_courses {
-  background: var(--paper);
+  border-color: var(--line);
+  background: var(--shade);
   color: var(--ink-soft);
-  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .tags {
@@ -335,74 +242,134 @@ a.learner:hover {
   gap: 6px;
 }
 
+/* A skill: outlined while it is a goal or on offer, filled once earned. */
 .tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 9px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  padding: 2px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
   background: var(--surface);
   font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
   white-space: nowrap;
 }
 
 .tag--earned {
-  border-color: transparent;
+  padding-left: 7px;
+  border-color: var(--track-line);
   background: var(--track-tint);
   color: var(--track);
-  font-weight: 600;
+  font-weight: 650;
 }
 
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--board-tint);
+  color: var(--board);
+  font-family: var(--body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--board-tint);
+  color: var(--board);
+  font-family: var(--display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.avatar--at_risk {
+  background: var(--risk-tint);
+  color: var(--risk);
+}
+
+.avatar--no_active_courses {
+  background: var(--paper);
+  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+
+/* The last 7 days. A tile per day; yellow where the learner was active. */
 .strip {
   display: flex;
   gap: 4px;
 }
 
 .strip__day {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--line);
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--shade);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-soft);
+  font-weight: 600;
+  line-height: 1.1;
 }
 
 .strip__day.is-active {
   background: var(--sun);
-}
-
-.strip--labelled {
-  gap: 6px;
-}
-
-.strip--labelled .strip__day {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-.strip--labelled .strip__day.is-active {
-  background: var(--sun);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px #d99a0b;
   color: var(--ink);
 }
 
-.strip--labelled .strip__day.is-today {
+.strip__day.is-today {
   outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: 1.5px;
+}
+
+.strip--full {
+  gap: 6px;
+  /* Wide enough to read; on a phone the count wraps underneath instead of squeezing the tiles. */
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+
+.strip--full .strip__day {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 0 8px;
+  border-radius: 10px;
+}
+
+.strip--full .strip__weekday {
+  font-size: 0.75rem;
+}
+
+.strip--full .strip__date {
+  font-family: var(--display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.strip--full .strip__day:not(.is-active) .strip__date {
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .button {
   min-height: 44px;
   padding: 8px 18px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--board);
   color: var(--board-ink);
   font-weight: 650;
@@ -414,10 +381,28 @@ a.learner:hover {
   color: var(--ink);
 }
 
+.button--small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 14px 4px 10px;
+  font-size: 0.875rem;
+}
+
+.button--danger {
+  background: var(--risk);
+  color: #fff;
+}
+
 .button--quiet {
-  background: transparent;
+  background: var(--surface);
   color: var(--board);
   box-shadow: inset 0 0 0 1.5px var(--board);
+}
+
+.button--quiet:hover:not(:disabled) {
+  background: var(--board-tint);
 }
 
 .button:disabled,
@@ -426,23 +411,412 @@ a.learner:hover {
   cursor: default;
 }
 
+.link--danger {
+  color: var(--risk);
+}
+
 .link {
   padding: 6px 2px;
   border: 0;
   background: none;
   color: var(--board);
-  font-weight: 600;
+  font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+/* --- Roster: one card per learner --------------------------------------- */
+
+.roster {
+  background: var(--paper);
+}
+
+.roster__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px var(--gutter) 12px;
+}
+
+/* The filter sits on its own row under the title and the Add button. */
+.roster__head .segmented {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+/* --- Forms --------------------------------------------------------------- */
+
+.add-form {
+  display: grid;
+  gap: 14px;
+  margin: 0 12px 12px;
+  padding: 16px;
+  border: 1.5px solid var(--board);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--board-tint);
+}
+
+.add-form h3 {
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.add-form__actions,
+.confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field > span,
+.field > legend {
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.field > legend {
+  margin-bottom: 6px;
+}
+
+.field > legend .muted {
+  font-weight: 400;
+}
+
+.field input[type='text'],
+.rename input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.field input[type='text']:focus-visible,
+.rename input:focus-visible {
+  border-color: var(--board);
+  outline-offset: 1px;
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--risk);
+}
+
+.field__error {
+  color: var(--risk);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.choice--small {
+  min-height: 34px;
+  padding: 2px 10px;
+  font-size: 0.875rem;
+}
+
+.roster__head h2 {
+  font-family: var(--display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.roster__empty {
+  margin: 0 12px 24px;
+  padding: 18px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.segmented__count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--board);
+  color: var(--board-ink);
+}
+
+.segmented button[aria-pressed='true'] .segmented__count {
+  background: rgb(255 255 255 / 0.18);
+}
+
+.roster__list {
+  display: grid;
+  gap: 10px;
+  padding: 2px 12px 20px;
+}
+
+.learner {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.learner:hover {
+  border-color: var(--line-strong);
+}
+
+/* A red edge marks the learners who need attention. */
+.learner--at_risk {
+  box-shadow: inset 4px 0 0 var(--risk);
+  padding-left: 18px;
+}
+
+.learner[aria-current='page'] {
+  border-color: var(--board);
+  box-shadow: 0 0 0 3px var(--board-tint);
+}
+
+.learner--at_risk[aria-current='page'] {
+  box-shadow:
+    inset 4px 0 0 var(--risk),
+    0 0 0 3px var(--board-tint);
+}
+
+.learner__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.learner__who {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.learner__name {
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.learner__active {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.learner--at_risk .learner__active {
+  color: var(--risk);
+  font-weight: 600;
+}
+
+.learner__alert {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--risk-tint);
+  color: var(--risk);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.learner__courses {
+  display: grid;
+  gap: 9px;
+}
+
+/* One open course: title, percent, and a thin track with the 80% mark. */
+.mini {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.mini__title {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini__percent {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini__track {
+  position: relative;
+  grid-column: 1 / -1;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.mini__track::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 80%;
+  width: 1.5px;
+  background: var(--ink);
+  opacity: 0.55;
+}
+
+.mini__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--board);
+}
+
+.mini--at_risk .mini__fill {
+  background: var(--risk);
+}
+
+.mini--at_risk .mini__percent {
+  color: var(--risk);
+}
+
+.learner__finished {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--track);
+}
+
+.learner__none {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.learner__week {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+.learner__days {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.learner__days strong {
+  font-size: 0.9375rem;
+  color: var(--ink);
+}
+
+.learner__skills {
+  display: grid;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.learner__skills > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.learner__skills dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-top: 2px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.learner__skills dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 0.8125rem;
+}
+
+.learner__skills .tag {
+  padding: 1px 8px;
+  border-radius: 7px;
+  font-size: 0.8125rem;
+}
+
+.learner__skills .tag--earned {
+  padding-left: 6px;
+}
+
+.learner__skills .muted {
+  padding-top: 2px;
 }
 
 /* --- Learner ------------------------------------------------------------- */
 
 .detail {
   display: grid;
-  gap: 24px;
-  max-width: 760px;
+  gap: 22px;
+  max-width: 880px;
 }
 
 .back {
@@ -457,16 +831,32 @@ a.learner:hover {
   text-decoration: none;
 }
 
+.who {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.who .avatar {
+  width: 60px;
+  height: 60px;
+  font-size: 1.375rem;
+}
+
+.who__text {
+  min-width: 0;
+}
+
 .who__name {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  gap: 6px 14px;
 }
 
 .who__name h1 {
   font-family: var(--display);
-  font-size: clamp(1.75rem, 1.3rem + 2vw, 2.5rem);
+  font-size: clamp(1.625rem, 1.25rem + 1.8vw, 2.375rem);
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -477,51 +867,162 @@ a.learner:hover {
 }
 
 .who__summary {
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--ink-soft);
 }
 
-.facts {
-  display: grid;
-  margin-top: 18px;
-  border-top: 1px solid var(--line);
-}
-
-.facts__row {
-  display: grid;
-  gap: 4px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.facts dt {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-.facts__week {
+.who__actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
+  gap: 2px 18px;
+  margin-top: 2px;
+  font-size: 0.9375rem;
+}
+
+.rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rename input {
+  flex: 1 1 220px;
+  width: auto;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+/* Asks before a learner is removed; nothing happens until the red button. */
+.confirm {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1.5px solid #e3aaa4;
+  border-radius: var(--radius);
+  background: var(--risk-tint);
+}
+
+/* Goals, earned skills and the week: three bordered panels. */
+.cards {
+  display: grid;
+  gap: 12px;
 }
 
 @media (min-width: 560px) {
-  .facts__row {
-    grid-template-columns: 130px minmax(0, 1fr);
-    align-items: center;
-    gap: 16px;
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .card--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--shade);
+}
+
+.card__head h2 {
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.card__icon,
+.section__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--board-tint);
+  color: var(--board);
+}
+
+.card--track .card__icon {
+  background: var(--track-tint);
+  color: var(--track);
+}
+
+.card--sun .card__icon {
+  background: var(--sun-tint);
+  color: var(--sun-deep);
+}
+
+.card__aside {
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.card--track .count {
+  background: var(--track-tint);
+  color: var(--track);
+}
+
+.card__body {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  justify-items: start;
+  gap: 8px;
+  padding: 14px;
+}
+
+.card__body > .goal-editor {
+  justify-self: stretch;
+}
+
+.week {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  width: 100%;
+}
+
+.week__count {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 1.3;
+}
+
+.week__count strong {
+  font-family: var(--display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.week__count .muted {
+  font-size: 0.875rem;
 }
 
 .goal-editor fieldset {
   display: grid;
   gap: 12px;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
-  min-width: 0;
 }
 
 .goal-editor__actions {
@@ -537,15 +1038,15 @@ a.learner:hover {
   min-height: 40px;
   padding: 4px 12px;
   border: 1.5px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface);
   cursor: pointer;
 }
 
 .choice.is-picked {
   border-color: var(--board);
-  background: var(--track-tint);
-  font-weight: 600;
+  background: var(--board-tint);
+  font-weight: 650;
 }
 
 .choice input {
@@ -561,16 +1062,19 @@ a.learner:hover {
 
 .notice {
   padding: 10px 14px;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   font-weight: 600;
 }
 
 .notice--ok {
+  border-color: var(--track-line);
   background: var(--track-tint);
   color: var(--track);
 }
 
 .notice--error {
+  border-color: #efc2bc;
   background: var(--risk-tint);
   color: var(--risk);
 }
@@ -581,7 +1085,7 @@ a.learner:hover {
   display: grid;
   justify-items: start;
   gap: 6px;
-  padding: 20px;
+  padding: 22px;
   border-radius: var(--radius);
   background: var(--board);
   color: var(--board-ink);
@@ -610,9 +1114,9 @@ a.learner:hover {
 }
 
 .next--none {
+  border: var(--border);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .next--none h2 {
@@ -629,52 +1133,80 @@ a.learner:hover {
 .section__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 2px 16px;
+  gap: 6px 16px;
+  padding-bottom: 10px;
+  border-bottom: var(--border);
 }
 
 .section__head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--display);
   font-size: 1.25rem;
-  font-weight: 650;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-.section__head p {
+.section__note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+/* A small copy of the 80% mark, as a legend. */
+.section__mark {
+  flex: none;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--ink);
 }
 
 .empty {
-  padding: 18px;
-  border: 1.5px dashed var(--line);
+  padding: 20px;
+  border: 1.5px dashed var(--line-strong);
   border-radius: var(--radius);
+  background: var(--shade);
   color: var(--ink-soft);
 }
 
 .empty--center {
   margin-top: 48px;
-  text-align: center;
   border: 0;
+  background: none;
+  text-align: center;
 }
 
 /* --- Courses ------------------------------------------------------------- */
 
 .courses {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
+/* The left edge carries the state: green on track, red at risk, lighter green done. */
 .course {
   display: grid;
-  gap: 10px;
-  padding: 16px;
+  gap: 12px;
+  padding: 16px 16px 16px 20px;
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 4px 0 0 var(--board);
 }
 
 .course--at_risk {
-  box-shadow: inset 0 0 0 1.5px var(--risk);
+  border-color: #e3aaa4;
+  box-shadow: inset 4px 0 0 var(--risk);
+}
+
+.course--completed {
+  box-shadow: inset 4px 0 0 var(--track);
 }
 
 .course__top {
@@ -685,7 +1217,8 @@ a.learner:hover {
 }
 
 .course__top h3 {
-  font-size: 1.0625rem;
+  font-family: var(--display);
+  font-size: 1.125rem;
   font-weight: 650;
   line-height: 1.3;
 }
@@ -693,23 +1226,31 @@ a.learner:hover {
 .course__progress {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .course__percent {
   flex: none;
-  width: 4.4ch; /* fixed, so the 80% marks line up from one course to the next */
+  width: 4.1ch; /* fixed, so the 80% marks line up from one course to the next */
   font-family: var(--display);
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   text-align: right;
+}
+
+.course__percent small {
+  margin-left: 1px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .bar {
   position: relative;
   flex: 1;
-  height: 10px;
+  height: 12px;
   border-radius: 999px;
   background: var(--line);
 }
@@ -732,8 +1273,8 @@ a.learner:hover {
 /* The 80% mark: where the skills are earned. */
 .bar__mark {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
+  top: -5px;
+  bottom: -5px;
   left: 80%;
   width: 2px;
   border-radius: 1px;
@@ -744,22 +1285,33 @@ a.learner:hover {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 2px 16px;
+  gap: 4px 16px;
   font-size: 0.875rem;
   color: var(--ink-soft);
 }
 
-.course--at_risk .course__meta span:last-child {
+.course__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.course--at_risk .course__when {
   color: var(--risk);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .course__flag {
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #fdf3d6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid #f1d68a;
+  border-radius: 9px;
+  background: var(--sun-tint);
   color: var(--sun-deep);
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .course__foot {
@@ -768,29 +1320,51 @@ a.learner:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-strong);
 }
 
 /* --- Path to each goal --------------------------------------------------- */
 
 .paths {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .path {
   display: grid;
-  gap: 12px;
+  gap: 16px;
   padding: 16px;
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.path--earned {
+  border-color: var(--track-line);
+  background: #f6fbf8;
 }
 
 .path__goal {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
   font-size: 0.875rem;
+}
+
+.path__status {
+  color: var(--ink-soft);
+}
+
+.path--earned .path__status {
+  color: var(--track);
+  font-weight: 650;
+}
+
+.path__count {
+  margin-left: auto;
+  color: var(--ink-soft);
 }
 
 /* Stacked on a phone, left to right when there is room. */
@@ -801,61 +1375,78 @@ a.learner:hover {
 .step {
   position: relative;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 32px minmax(0, 1fr);
   gap: 12px;
-  padding-bottom: 14px;
+  padding-bottom: 16px;
 }
 
 .step:last-child {
   padding-bottom: 0;
 }
 
-/* The line joining one course to the next. */
+/* The line joining one course to the next; green once the course is done. */
 .step:not(:last-child)::before {
   content: '';
   position: absolute;
-  top: 22px;
-  bottom: 0;
-  left: 9px;
+  top: 36px;
+  bottom: 4px;
+  left: 15px;
   width: 2px;
+  border-radius: 1px;
   background: var(--line);
 }
 
+.step--done:not(:last-child)::before {
+  background: var(--track);
+}
+
 .step__node {
-  width: 20px;
-  height: 20px;
-  margin-top: 2px;
-  border: 2px solid var(--line);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--line-strong);
   border-radius: 50%;
   background: var(--surface);
+  color: var(--ink-soft);
+  font-family: var(--display);
+  font-size: 0.875rem;
+  font-weight: 700;
 }
 
 .step--done .step__node {
   border-color: var(--track);
   background: var(--track);
+  color: #fff;
 }
 
+/* A ring that fills with the course's progress. */
 .step--in_progress .step__node {
-  border-color: var(--board);
-  background: radial-gradient(circle, var(--board) 0 4px, var(--surface) 5px);
+  border: 0;
+  background:
+    radial-gradient(closest-side, var(--surface) 78%, transparent 80%),
+    conic-gradient(var(--board) calc(var(--p) * 1%), var(--line) 0);
+  color: var(--board);
 }
 
 .step--ready .step__node {
   border-color: var(--board);
+  color: var(--board);
 }
 
 .step--locked .step__node,
 .step--unavailable .step__node {
   border-style: dashed;
-  border-color: var(--ink-soft);
+  background: var(--shade);
 }
 
 .step__text {
   display: grid;
+  align-content: center;
 }
 
 .step__title {
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.35;
 }
 
@@ -864,9 +1455,14 @@ a.learner:hover {
   color: var(--ink-soft);
 }
 
+.step--done .step__state {
+  color: var(--track);
+}
+
 .step--locked .step__title,
 .step--unavailable .step__title {
   color: var(--ink-soft);
+  font-weight: 500;
 }
 
 @media (min-width: 640px) {
@@ -882,10 +1478,10 @@ a.learner:hover {
   }
 
   .step:not(:last-child)::before {
-    top: 11px;
+    top: 15px;
+    right: 8px;
     bottom: auto;
-    left: 26px;
-    right: 6px;
+    left: 40px;
     width: auto;
     height: 2px;
   }
@@ -931,21 +1527,18 @@ a.learner:hover {
   gap: 8px;
   max-width: 520px;
   padding: 20px;
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--surface);
 }
 
 .panel--error {
-  box-shadow: inset 0 0 0 1.5px var(--risk);
+  border-color: var(--risk);
 }
 
 .panel h2 {
   font-family: var(--display);
   font-size: 1.25rem;
-}
-
-.panel:not(.panel--error) {
-  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .panel .button {

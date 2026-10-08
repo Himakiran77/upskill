@@ -30,7 +30,7 @@ CREATE DATABASE upskill_test OWNER upskill;
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | 60 tests: the rules as pure functions, then the API against a real Postgres (`upskill_test`) |
+| `npm test` | 66 tests: the rules as pure functions, then the API against a real Postgres (`upskill_test`) |
 | `npm run build && npm start` | One process on :4000 serving the API and the built React app |
 | `npm run db:seed` | Wipe and re-import the seed |
 | `npm run move-learner -- s1 pune` | Move a learner to another center |
@@ -41,7 +41,7 @@ CREATE DATABASE upskill_test OWNER upskill;
 
 | Requirement | Where |
 | --- | --- |
-| Student picker with goals, earned skills, active days | The roster. Each row has all three, plus status and the reason for it. |
+| Student picker with goals, earned skills, active days | The roster. Each card shows goals, earned skills, status, the reason for it, and a progress track per course; picking a learner opens their "Last 7 days" panel with the active-day count. The roster is sorted as a triage list: at-risk learners first, longest-quiet on top, with an at-risk filter. |
 | My courses, percent, on-track or at-risk | Courses section. Stalled courses sort to the top. |
 | Recommend next: one course, short reason | The green card. Reasoning in [`recommendNext`](server/src/rules.ts). |
 | Enroll, UI updates | The card's button. The server returns the updated learner; the roster re-sorts. |
@@ -69,13 +69,13 @@ Step 3 matters with this seed. All three provided learners are already enrolled 
 
 Three, each chosen because the core screens are weaker without it.
 
-1. **The roster is a triage list.** At-risk learners first, longest-quiet on top, with a one-line reason ("Building Dashboards stalled. Last active 8 days ago.") and an at-risk filter. A coach gets the answer without opening anyone.
+1. **Onboard a learner from the dashboard.** "Add learner" takes a name and optional goals and puts the learner straight into the coach's center, ready to enroll. A coach can also rename a learner or remove them from the center. Removing ends their membership here and deletes nothing, because a learner is shared across centers.
 2. **Goals you can change, and the path to each.** A learner's goals are editable, and each goal shows its chain of courses: done, in progress, ready, or locked. It explains the recommendation and shows how far the goal is.
 3. **Log a lesson.** One button per course. Without it nothing can change after enrolling; with it you can watch a skill appear at 80%, the next course unlock at 100%, and an at-risk learner return to on track.
 
 ### Not built, on purpose
 
-- **A course catalog.** There is no screen listing courses. A learner reaches a course through a goal.
+- **A course catalog.** There is no screen listing courses, and no way to create or edit one. A learner reaches a course through a goal.
 - **Sign-in.** The API reads the coach from an `X-Coach-Id` header and falls back to `DEFAULT_COACH_ID`. It is one function (`withViewer` in `app.ts`); everything after it is already scoped to that coach's center.
 - **Nudges, notes, notifications.** The obvious next step for an at-risk learner is "the coach reached out". It needs real coach identity first.
 - **Charts and trends.** With one activity date per course in the seed, a chart would be decoration.
@@ -164,6 +164,8 @@ There is one center today (`blr`). The schema already assumes several.
 npm run move-learner -- s1 pune
 ```
 
+**Adding and removing follow the same rule.** A learner added from the dashboard gets an open membership at the coach's own center, in the same transaction that creates them. "Remove from center" closes that membership and touches nothing else, so a coach cannot delete a person or their history, only end their time at this center.
+
 It is a command, not an endpoint, because moving people is an org-admin action and there is no admin role to guard an endpoint with yet.
 
 **When the second center opens**, add: real sign-in in place of the header stub; a `coach_centers` table if a coach should cover more than one center; and Postgres row-level security on the per-center tables as a second lock behind the query scoping.
@@ -176,7 +178,10 @@ Every route is scoped to the calling coach's center.
 | --- | --- |
 | `GET /api/session` | Coach, center, today's date, skills that can be goals |
 | `GET /api/students` | The roster, at-risk first |
+| `POST /api/students` `{ name, skillIds? }` | Add a learner to the coach's center, with optional goals |
 | `GET /api/students/:id` | One learner: courses, recommendation, goal paths |
+| `PATCH /api/students/:id` `{ name }` | Rename a learner |
+| `DELETE /api/students/:id` | Remove a learner from the coach's center. Their records are kept |
 | `POST /api/students/:id/enrollments` `{ courseId }` | Enroll. 409 if already enrolled, 422 naming the unfinished prerequisite |
 | `POST /api/students/:id/enrollments/:courseId/lessons` | Log one lesson. 409 when the course is complete |
 | `PUT /api/students/:id/goals` `{ skillIds }` | Replace the learner's goals |
@@ -212,7 +217,7 @@ client/
 
 1. Roster: Rohan is at the top, at risk, with the reason. Filter to "At risk".
 2. Open Aisha: 83% in JavaScript Essentials, skills earned, React Basics flagged. The card says to finish JavaScript first.
-3. Open Kabir: no courses. The card recommends SQL Fundamentals as the step toward dashboards. Enroll.
+3. Add a learner with the goal `dashboards` (or open Kabir): no courses. The card recommends SQL Fundamentals as the step toward dashboards. Enroll.
 4. Log 8 lessons: `sql` is earned at the 80% mark, Building Dashboards is still locked. Log 2 more: it unlocks and becomes the recommendation.
 5. Change Priya's goals to `sql`: the recommendation follows the goal.
 6. `npm run move-learner`, then the README's multi-center table.

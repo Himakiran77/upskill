@@ -5,6 +5,7 @@ import { z, ZodError } from 'zod';
 import { isClockPinned, now, repoRoot } from './config.js';
 import type { Db } from './db.js';
 import {
+  createStudent,
   enroll,
   findViewer,
   getRoster,
@@ -12,12 +13,21 @@ import {
   HttpError,
   listSkills,
   logLesson,
+  removeStudent,
+  renameStudent,
   setGoals,
   type Viewer,
 } from './service.js';
 
 const enrollBody = z.object({ courseId: z.string().min(1) });
 const goalsBody = z.object({ skillIds: z.array(z.string().min(1)).max(20) });
+// Trimmed and collapsed, so "  Asha   Rao " is stored as "Asha Rao".
+const personName = z
+  .string()
+  .transform((value) => value.trim().replace(/\s+/g, ' '))
+  .pipe(z.string().min(1).max(80));
+const newStudentBody = z.object({ name: personName, skillIds: z.array(z.string().min(1)).max(20).default([]) });
+const renameBody = z.object({ name: personName });
 
 type Handler = (req: Request, res: Response, viewer: Viewer) => Promise<void>;
 
@@ -68,10 +78,33 @@ export function createApp(db: Db) {
     }),
   );
 
+  app.post(
+    '/api/students',
+    withViewer(async (req, res, viewer) => {
+      res.status(201).json({ student: await createStudent(db, viewer, newStudentBody.parse(req.body)) });
+    }),
+  );
+
   app.get(
     '/api/students/:studentId',
     withViewer(async (req, res, viewer) => {
       res.json({ student: await getStudent(db, viewer, req.params.studentId!) });
+    }),
+  );
+
+  app.patch(
+    '/api/students/:studentId',
+    withViewer(async (req, res, viewer) => {
+      const { name } = renameBody.parse(req.body);
+      res.json({ student: await renameStudent(db, viewer, req.params.studentId!, name) });
+    }),
+  );
+
+  app.delete(
+    '/api/students/:studentId',
+    withViewer(async (req, res, viewer) => {
+      await removeStudent(db, viewer, req.params.studentId!);
+      res.status(204).end();
     }),
   );
 

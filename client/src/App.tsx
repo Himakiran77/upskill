@@ -4,7 +4,7 @@ import { longDate } from './format';
 import { ErrorPanel } from './parts';
 import { Roster, RosterSkeleton } from './Roster';
 import { StudentDetail } from './StudentDetail';
-import type { Load, Session, StudentSummary } from './types';
+import type { Load, Session, StudentSummary, StudentView } from './types';
 
 /** The selected learner lives in the URL hash (#/s1): linkable, and Back works on a phone. */
 function useSelectedId(): string | null {
@@ -66,6 +66,37 @@ export function App() {
       .catch(() => undefined);
   }, []);
 
+  // The learner added a moment ago, so their page can confirm it on arrival.
+  const [addedId, setAddedId] = useState<string | null>(null);
+
+  // Confirm it once: moving on to another learner clears the flag.
+  useEffect(() => {
+    if (addedId && hashId && hashId !== addedId) setAddedId(null);
+  }, [addedId, hashId]);
+
+  const handleAdded = useCallback(
+    (student: StudentView) => {
+      setAddedId(student.id);
+      refreshRoster();
+      window.location.hash = `#/${student.id}`;
+    },
+    [refreshRoster],
+  );
+
+  const handleRemoved = useCallback(
+    (studentId: string) => {
+      // Drop them from the list at once, so the next learner opens instead of a dead link.
+      setBoot((before) =>
+        before.status === 'ready'
+          ? { status: 'ready', data: { ...before.data, students: before.data.students.filter((s) => s.id !== studentId) } }
+          : before,
+      );
+      window.location.hash = '#/';
+      refreshRoster();
+    },
+    [refreshRoster],
+  );
+
   const session = boot.status === 'ready' ? boot.data.session : null;
   const students = boot.status === 'ready' ? boot.data.students : [];
   // With room for both panes, open the learner at the top of the triage list.
@@ -116,13 +147,20 @@ export function App() {
 
         {boot.status === 'ready' && session && (
           <>
-            <Roster students={students} selectedId={selectedId} />
+            <Roster students={students} selectedId={selectedId} skills={session.skills} onAdded={handleAdded} />
             <div className="shell__detail">
               {selectedId ? (
-                <StudentDetail key={selectedId} studentId={selectedId} session={session} onChanged={refreshRoster} />
+                <StudentDetail
+                  key={selectedId}
+                  studentId={selectedId}
+                  session={session}
+                  onChanged={refreshRoster}
+                  onRemoved={handleRemoved}
+                  justAdded={selectedId === addedId}
+                />
               ) : (
                 <p className="empty empty--center">
-                  {students.length === 0 ? 'Nothing to show until a learner joins.' : 'Pick a learner to see their courses.'}
+                  {students.length === 0 ? 'Add a learner to get started.' : 'Pick a learner to see their courses.'}
                 </p>
               )}
             </div>

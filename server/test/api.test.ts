@@ -71,6 +71,11 @@ describe('roster', () => {
       coursesInProgress: 2,
     });
     expect(aisha.activity).toHaveLength(7);
+    expect(aisha.courses).toEqual([
+      { courseId: 'c2', title: 'JavaScript Essentials', percent: 83, state: 'on_track' },
+      { courseId: 'c3', title: 'React Basics', percent: 25, state: 'on_track' },
+      { courseId: 'c1', title: 'Web Foundations', percent: 100, state: 'completed' },
+    ]);
   });
 
   it('rejects an unknown coach', async () => {
@@ -166,6 +171,85 @@ describe('goals', () => {
   it('refuses a skill that does not exist', async () => {
     const res = await api.put('/api/students/s3/goals').send({ skillIds: ['juggling'] }).expect(422);
     expect(res.body.error.code).toBe('unknown_skill');
+  });
+});
+
+describe('adding, renaming and removing learners', () => {
+  const add = (body: object) => api.post('/api/students').send(body);
+
+  it('adds a learner to the coach center, ready to enroll', async () => {
+    const res = await add({ name: '  Neha   Kapoor ', skillIds: ['dashboards'] }).expect(201);
+    const student = res.body.student;
+    expect(student).toMatchObject({
+      name: 'Neha Kapoor',
+      status: 'no_active_courses',
+      goals: ['dashboards'],
+      earnedSkills: [],
+      courses: [],
+      recommendation: { kind: 'enroll', courseId: 'c4' },
+    });
+
+    const roster = await api.get('/api/students').expect(200);
+    expect(roster.body.students.map((s: { id: string }) => s.id)).toContain(student.id);
+    const { rows } = await db.query(
+      'SELECT center_id, left_at FROM center_memberships WHERE student_id = $1',
+      [student.id],
+    );
+    expect(rows).toEqual([{ center_id: 'blr', left_at: null }]);
+
+    await api.post(`/api/students/${student.id}/enrollments`).send({ courseId: 'c4' }).expect(201);
+  });
+
+  it('adds a learner with no goals', async () => {
+    const res = await add({ name: 'Dev Rao' }).expect(201);
+    expect(res.body.student.goals).toEqual([]);
+    expect(res.body.student.recommendation.kind).toBe('none');
+  });
+
+  it('refuses a blank or oversized name and an unknown goal, and creates nothing', async () => {
+    await add({ name: '   ' }).expect(400);
+    await add({}).expect(400);
+    await add({ name: 'x'.repeat(81) }).expect(400);
+    const res = await add({ name: 'Neha Kapoor', skillIds: ['juggling'] }).expect(422);
+    expect(res.body.error.code).toBe('unknown_skill');
+    const { rows } = await db.query('SELECT count(*)::int AS n FROM students');
+    expect(rows[0].n).toBe(4);
+  });
+
+  it('renames a learner', async () => {
+    const res = await api.patch('/api/students/s4').send({ name: 'Kabir S. Shah' }).expect(200);
+    expect(res.body.student.name).toBe('Kabir S. Shah');
+    await api.patch('/api/students/s4').send({ name: '' }).expect(400);
+    await api.patch('/api/students/nope').send({ name: 'Nobody' }).expect(404);
+  });
+
+  it('removes a learner from the roster but keeps their records', async () => {
+    await api.delete('/api/students/s1').expect(204);
+
+    await api.get('/api/students/s1').expect(404);
+    const roster = await api.get('/api/students').expect(200);
+    expect(roster.body.students.map((s: { id: string }) => s.id)).not.toContain('s1');
+
+    const kept = await db.query(
+      `SELECT (SELECT count(*)::int FROM students WHERE id = 's1') AS students,
+              (SELECT count(*)::int FROM enrollments WHERE student_id = 's1') AS enrollments,
+              (SELECT count(*)::int FROM center_memberships WHERE student_id = 's1' AND left_at IS NULL) AS open`,
+    );
+    expect(kept.rows[0]).toEqual({ students: 1, enrollments: 3, open: 0 });
+
+    await api.delete('/api/students/s1').expect(404);
+  });
+
+  it('keeps all of it inside the coach center', async () => {
+    await addPune();
+    await api.patch('/api/students/s1').set(asPune).send({ name: 'Hacked' }).expect(404);
+    await api.delete('/api/students/s1').set(asPune).expect(404);
+    await api.get('/api/students/s1').expect(200);
+
+    // Pune offers sql and data only, yet any real skill can be a goal.
+    const res = await add({ name: 'Ira Joshi', skillIds: ['sql'] }).set(asPune).expect(201);
+    await api.get(`/api/students/${res.body.student.id}`).expect(404);
+    await api.get(`/api/students/${res.body.student.id}`).set(asPune).expect(200);
   });
 });
 

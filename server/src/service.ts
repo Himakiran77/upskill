@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { now } from './config.js';
 import { transaction, type Db, type Queryable } from './db.js';
 import {
@@ -36,7 +37,11 @@ export interface Viewer {
 export type StudentSummary = Pick<
   StudentView,
   'id' | 'name' | 'status' | 'goals' | 'earnedSkills' | 'activeDays' | 'activity' | 'daysSinceActive' | 'atRiskCourses'
-> & { coursesInProgress: number };
+> & {
+  coursesInProgress: number;
+  /** Just enough of each course to draw its progress in the roster. */
+  courses: Pick<StudentView['courses'][number], 'courseId' | 'title' | 'percent' | 'state'>[];
+};
 
 // --- Reads -----------------------------------------------------------------
 
@@ -158,6 +163,7 @@ export async function getRoster(db: Queryable, viewer: Viewer): Promise<StudentS
       daysSinceActive: v.daysSinceActive,
       atRiskCourses: v.atRiskCourses,
       coursesInProgress: v.courses.filter((c) => c.state !== 'completed').length,
+      courses: v.courses.map((c) => ({ courseId: c.courseId, title: c.title, percent: c.percent, state: c.state })),
     }));
 }
 
@@ -253,16 +259,21 @@ export async function logLesson(db: Db, viewer: Viewer, studentId: string, cours
   return getStudent(db, viewer, studentId);
 }
 
+/** Refuse goal ids that are not skills. */
+async function requireSkills(tx: Queryable, skillIds: string[]): Promise<void> {
+  const known = await tx.query<{ id: string }>('SELECT id FROM skills WHERE id = ANY($1::text[])', [skillIds]);
+  const knownIds = new Set(known.rows.map((r) => r.id));
+  const unknown = skillIds.filter((id) => !knownIds.has(id));
+  if (unknown.length > 0) {
+    throw new HttpError(422, 'unknown_skill', `Unknown skill: ${unknown.join(', ')}.`, { unknown });
+  }
+}
+
 export async function setGoals(db: Db, viewer: Viewer, studentId: string, skillIds: string[]): Promise<StudentView> {
   const wanted = [...new Set(skillIds)];
   await transaction(db, async (tx) => {
     await lockStudent(tx, viewer, studentId);
-    const known = await tx.query<{ id: string }>('SELECT id FROM skills WHERE id = ANY($1::text[])', [wanted]);
-    const knownIds = new Set(known.rows.map((r) => r.id));
-    const unknown = wanted.filter((id) => !knownIds.has(id));
-    if (unknown.length > 0) {
-      throw new HttpError(422, 'unknown_skill', `Unknown skill: ${unknown.join(', ')}.`, { unknown });
-    }
+    await requireSkills(tx, wanted);
     await tx.query('DELETE FROM student_goals WHERE student_id = $1 AND NOT (skill_id = ANY($2::text[]))', [
       studentId,
       wanted,
@@ -275,6 +286,59 @@ export async function setGoals(db: Db, viewer: Viewer, studentId: string, skillI
     );
   });
   return getStudent(db, viewer, studentId);
+}
+
+/**
+ * Onboard a new learner into the coach's own center. One transaction creates
+ * the person, their open membership here, and any goals, so a learner can
+ * never exist without a center or appear half-made.
+ */
+export async function createStudent(
+  db: Db,
+  viewer: Viewer,
+  input: { name: string; skillIds: string[] },
+): Promise<StudentView> {
+  const id = randomUUID();
+  const goals = [...new Set(input.skillIds)];
+  await transaction(db, async (tx) => {
+    await requireSkills(tx, goals);
+    await tx.query('INSERT INTO students (id, name) VALUES ($1, $2)', [id, input.name]);
+    await tx.query('INSERT INTO center_memberships (student_id, center_id, joined_at) VALUES ($1, $2, $3)', [
+      id,
+      viewer.centerId,
+      now(),
+    ]);
+    await tx.query('INSERT INTO student_goals (student_id, skill_id) SELECT $1, unnest($2::text[])', [id, goals]);
+  });
+  return getStudent(db, viewer, id);
+}
+
+export async function renameStudent(db: Db, viewer: Viewer, studentId: string, name: string): Promise<StudentView> {
+  await transaction(db, async (tx) => {
+    await lockStudent(tx, viewer, studentId);
+    await tx.query('UPDATE students SET name = $2 WHERE id = $1', [studentId, name]);
+  });
+  return getStudent(db, viewer, studentId);
+}
+
+/**
+ * Remove a learner from the coach's center by closing their membership.
+ * Nothing is deleted: the person, their enrollments and their progress stay,
+ * because a learner is shared across centers and may join another one. A
+ * coach can only ever end a membership at their own center.
+ */
+export async function removeStudent(db: Db, viewer: Viewer, studentId: string): Promise<void> {
+  await transaction(db, async (tx) => {
+    await lockStudent(tx, viewer, studentId);
+    // GREATEST keeps left_at >= joined_at even when the demo clock is pinned
+    // to a date before the learner joined.
+    await tx.query(
+      `UPDATE center_memberships
+          SET left_at = GREATEST($3::timestamptz, joined_at)
+        WHERE student_id = $1 AND center_id = $2 AND left_at IS NULL`,
+      [studentId, viewer.centerId, now()],
+    );
+  });
 }
 
 /**
@@ -297,7 +361,10 @@ export async function moveLearner(db: Db, studentId: string, toCenterId: string)
       throw new HttpError(409, 'already_there', 'The learner is already at that center.');
     }
     const at = now();
-    await tx.query('UPDATE center_memberships SET left_at = $2 WHERE id = $1', [current.id, at]);
+    await tx.query('UPDATE center_memberships SET left_at = GREATEST($2::timestamptz, joined_at) WHERE id = $1', [
+      current.id,
+      at,
+    ]);
     await tx.query('INSERT INTO center_memberships (student_id, center_id, joined_at) VALUES ($1, $2, $3)', [
       studentId,
       toCenterId,

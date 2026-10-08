@@ -32,3 +32,14 @@ export const weekdayInitial = (day: string) =>
 /** "Monday 5 Oct" for a YYYY-MM-DD calendar day. */
 export const dayLabel = (day: string) =>
   new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(utc(day));
+
+/** Day of the month for a YYYY-MM-DD calendar day: "5". */
+export const dayOfMonth = (day: string) => String(Number(day.slice(8, 10)));
+
+/** "AR" for "Aisha Rahman". */
+export function initials(name: string): string {
+  const words = name.trim().split(/\s+/);
+  const first = words[0]?.[0] ?? '';
+  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : '';
+  return (first + last).toUpperCase();
+}

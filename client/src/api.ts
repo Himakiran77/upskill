@@ -58,6 +58,18 @@ export const api = {
       post(),
     ).then((r) => r.student),
 
+  addStudent: (name: string, skillIds: string[]) =>
+    call<{ student: StudentView }>('/students', post({ name, skillIds })).then((r) => r.student),
+
+  renameStudent: (id: string, name: string) =>
+    call<{ student: StudentView }>(`/students/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }).then((r) => r.student),
+
+  /** Removes the learner from this center. Their records are kept. */
+  removeStudent: (id: string) => call<null>(`/students/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
   setGoals: (id: string, skillIds: string[]) =>
     call<{ student: StudentView }>(`/students/${encodeURIComponent(id)}/goals`, {
       method: 'PUT',

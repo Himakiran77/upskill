@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { api, ApiError, messageOf } from './api';
 import { daysAgo, plural, shortDate } from './format';
-import { ActivityStrip, ErrorPanel, ProgressBar, SkillTag, StatusPill } from './parts';
+import { ActivityStrip, Avatar, Card, ErrorPanel, Icon, ProgressBar, SkillTag, StatusPill } from './parts';
 import type { CourseProgress, GoalPath, Load, PathStep, Recommendation, Session, StudentView } from './types';
 
 interface Props {
@@ -9,17 +9,23 @@ interface Props {
   session: Session;
   /** Called after any change so the roster can re-sort. */
   onChanged: () => void;
+  /** Called once the learner has been removed from this center. */
+  onRemoved: (studentId: string) => void;
+  /** True when this learner was added a moment ago, to confirm it on arrival. */
+  justAdded?: boolean;
 }
 
 type Notice = { tone: 'ok' | 'error'; text: string };
 
-export function StudentDetail({ studentId, session, onChanged }: Props) {
+export function StudentDetail({ studentId, session, onChanged, onRemoved, justAdded }: Props) {
   const [state, setState] = useState<Load<StudentView>>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [missing, setMissing] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [editingGoals, setEditingGoals] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -31,6 +37,10 @@ export function StudentDetail({ studentId, session, onChanged }: Props) {
       .student(studentId, controller.signal)
       .then((data) => {
         setState({ status: 'ready', data });
+        if (justAdded) {
+          const nextStep = data.goals.length > 0 ? 'Enroll them in a first course below.' : 'Add goals to get a first course.';
+          setNotice({ tone: 'ok', text: `Added ${data.name} to ${session.center.name}. ${nextStep}` });
+        }
         // On a phone the roster is replaced by this view; move focus with it.
         heading.current?.focus({ preventScroll: true });
       })
@@ -40,6 +50,7 @@ export function StudentDetail({ studentId, session, onChanged }: Props) {
         setState({ status: 'error', message: messageOf(error) });
       });
     return () => controller.abort();
+    // justAdded and the center name only word the arrival notice, so they do not refetch.
   }, [studentId, attempt]);
 
   /** Run a change, swap in the learner the server sends back, tell the roster. */
@@ -90,78 +101,163 @@ export function StudentDetail({ studentId, session, onChanged }: Props) {
 
   const student = state.data;
   const busy = pending !== null;
+  const earnedGoals = student.goals.filter((g) => student.earnedSkills.includes(g)).length;
   const enroll = (courseId: string, title: string) =>
     run(`enroll:${courseId}`, () => api.enroll(student.id, courseId), `Enrolled in ${title}. It is in the course list below.`);
   const logLesson = (courseId: string, title: string) =>
     run(`lesson:${courseId}`, () => api.logLesson(student.id, courseId), `Logged a lesson in ${title}.`);
+
+  async function remove() {
+    setPending('remove');
+    setNotice(null);
+    try {
+      await api.removeStudent(student.id);
+      onRemoved(student.id);
+    } catch (error) {
+      setNotice({ tone: 'error', text: messageOf(error) });
+      setPending(null);
+    }
+  }
 
   return (
     <article className="detail" aria-busy={busy}>
       <BackLink />
 
       <header className="who">
-        <div className="who__name">
-          <h1 ref={heading} tabIndex={-1}>
-            {student.name}
-          </h1>
-          <StatusPill status={student.status} />
+        <Avatar name={student.name} status={student.status} />
+        <div className="who__text">
+          {renaming ? (
+            <RenameForm
+              current={student.name}
+              saving={pending === 'rename'}
+              onCancel={() => setRenaming(false)}
+              onSave={async (name) => {
+                if (await run('rename', () => api.renameStudent(student.id, name), 'Name saved.')) setRenaming(false);
+              }}
+            />
+          ) : (
+            <div className="who__name">
+              <h1 ref={heading} tabIndex={-1}>
+                {student.name}
+              </h1>
+              <StatusPill status={student.status} />
+            </div>
+          )}
+          <p className="who__summary">{summary(student)}</p>
+          {!renaming && !confirmingRemove && (
+            <div className="who__actions">
+              <button type="button" className="link" disabled={busy} onClick={() => setRenaming(true)}>
+                Rename
+              </button>
+              <button
+                type="button"
+                className="link link--danger"
+                disabled={busy}
+                onClick={() => setConfirmingRemove(true)}
+              >
+                Remove from center
+              </button>
+            </div>
+          )}
         </div>
-        <p className="who__summary">{summary(student)}</p>
-
-        <dl className="facts">
-          <div className="facts__row">
-            <dt>Goals</dt>
-            <dd>
-              {editingGoals ? (
-                <GoalEditor
-                  current={student.goals}
-                  skills={session.skills}
-                  saving={pending === 'goals'}
-                  onCancel={() => setEditingGoals(false)}
-                  onSave={async (skillIds) => {
-                    if (await run('goals', () => api.setGoals(student.id, skillIds), 'Goals saved.')) {
-                      setEditingGoals(false);
-                    }
-                  }}
-                />
-              ) : (
-                <div className="tags">
-                  {student.goals.length === 0 && <span className="muted">No goals yet.</span>}
-                  {student.goals.map((g) => (
-                    <SkillTag key={g} skill={g} earned={student.earnedSkills.includes(g)} />
-                  ))}
-                  <button type="button" className="link" disabled={busy} onClick={() => setEditingGoals(true)}>
-                    {student.goals.length === 0 ? 'Add goals' : 'Change goals'}
-                  </button>
-                </div>
-              )}
-            </dd>
-          </div>
-          <div className="facts__row">
-            <dt>Earned skills</dt>
-            <dd>
-              {student.earnedSkills.length === 0 ? (
-                <span className="muted">None yet. A skill is earned at 80% of a course that teaches it.</span>
-              ) : (
-                <div className="tags">
-                  {student.earnedSkills.map((s) => (
-                    <SkillTag key={s} skill={s} earned />
-                  ))}
-                </div>
-              )}
-            </dd>
-          </div>
-          <div className="facts__row">
-            <dt>Last 7 days</dt>
-            <dd className="facts__week">
-              <ActivityStrip days={student.activity} labelled />
-              <span>
-                <strong>{student.activeDays} of 7</strong> days active
-              </span>
-            </dd>
-          </div>
-        </dl>
       </header>
+
+      {confirmingRemove && (
+        <div className="confirm" role="group" aria-label={`Remove ${student.name}`}>
+          <p>
+            <strong>
+              Remove {student.name} from {session.center.name}?
+            </strong>{' '}
+            They leave your roster. Their courses and progress are kept, in case they join another center.
+          </p>
+          <div className="confirm__actions">
+            <button type="button" className="button button--danger" disabled={busy} onClick={remove}>
+              {pending === 'remove' ? 'Removing…' : 'Remove learner'}
+            </button>
+            <button
+              type="button"
+              className="button button--quiet"
+              disabled={busy}
+              onClick={() => setConfirmingRemove(false)}
+            >
+              Keep learner
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="cards">
+        <Card
+          icon="target"
+          title="Goals"
+          wide={editingGoals}
+          aside={
+            !editingGoals && student.goals.length > 0
+              ? `${earnedGoals} of ${student.goals.length} earned`
+              : undefined
+          }
+        >
+          {editingGoals ? (
+            <GoalEditor
+              current={student.goals}
+              skills={session.skills}
+              saving={pending === 'goals'}
+              onCancel={() => setEditingGoals(false)}
+              onSave={async (skillIds) => {
+                if (await run('goals', () => api.setGoals(student.id, skillIds), 'Goals saved.')) {
+                  setEditingGoals(false);
+                }
+              }}
+            />
+          ) : (
+            <>
+              <div className="tags">
+                {student.goals.length === 0 && <span className="muted">No goals yet.</span>}
+                {student.goals.map((g) => (
+                  <SkillTag key={g} skill={g} earned={student.earnedSkills.includes(g)} />
+                ))}
+              </div>
+              <button type="button" className="link" disabled={busy} onClick={() => setEditingGoals(true)}>
+                {student.goals.length === 0 ? 'Add goals' : 'Change goals'}
+              </button>
+            </>
+          )}
+        </Card>
+
+        <Card
+          icon="award"
+          title="Earned skills"
+          tone="track"
+          wide={editingGoals}
+          aside={<span className="count">{student.earnedSkills.length}</span>}
+        >
+          {student.earnedSkills.length === 0 ? (
+            <p className="muted">None yet. A skill is earned at 80% of a course that teaches it.</p>
+          ) : (
+            <div className="tags">
+              {student.earnedSkills.map((s) => (
+                <SkillTag key={s} skill={s} earned />
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card icon="calendar" title="Last 7 days" tone="sun" wide>
+          <div className="week">
+            <ActivityStrip days={student.activity} />
+            <p className="week__count">
+              <strong>{student.activeDays}</strong>
+              <span>
+                of 7 days active
+                <br />
+                <span className="muted">
+                  {student.daysSinceActive === null ? 'No activity yet' : `Last active ${daysAgo(student.daysSinceActive)}`}
+                </span>
+              </span>
+            </p>
+          </div>
+        </Card>
+      </div>
 
       <div className="notice-slot" aria-live="polite">
         {notice && <p className={`notice notice--${notice.tone}`}>{notice.text}</p>}
@@ -178,8 +274,19 @@ export function StudentDetail({ studentId, session, onChanged }: Props) {
 
       <section className="section" aria-labelledby="courses-heading">
         <div className="section__head">
-          <h2 id="courses-heading">Courses</h2>
-          {student.courses.length > 0 && <p className="muted">The mark at 80% is where a course's skills are earned.</p>}
+          <h2 id="courses-heading">
+            <span className="section__icon">
+              <Icon name="book" />
+            </span>
+            Courses
+            {student.courses.length > 0 && <span className="count">{student.courses.length}</span>}
+          </h2>
+          {student.courses.length > 0 && (
+            <p className="section__note">
+              <span className="section__mark" aria-hidden="true" />
+              The mark at 80% is where a course's skills are earned.
+            </p>
+          )}
         </div>
         {student.courses.length === 0 ? (
           <p className="empty">
@@ -206,7 +313,12 @@ export function StudentDetail({ studentId, session, onChanged }: Props) {
       {student.goalPaths.length > 0 && (
         <section className="section" aria-labelledby="paths-heading">
           <div className="section__head">
-            <h2 id="paths-heading">Path to each goal</h2>
+            <h2 id="paths-heading">
+              <span className="section__icon">
+                <Icon name="route" />
+              </span>
+              Path to each goal
+            </h2>
           </div>
           <ul className="paths">
             {student.goalPaths.map((path) => (
@@ -228,6 +340,54 @@ function summary(student: StudentView): string {
   }
   if (student.status === 'on_track') return `No open course has been idle for more than 3 days. ${active}`;
   return student.courses.length === 0 ? 'Not enrolled in anything yet.' : `Nothing in progress. ${active}`;
+}
+
+function RenameForm({
+  current,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  current: string;
+  saving: boolean;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(current);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => input.current?.select(), []);
+  const trimmed = name.trim();
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!trimmed) return;
+    if (trimmed === current) onCancel();
+    else onSave(trimmed);
+  }
+
+  return (
+    <form className="rename" onSubmit={submit}>
+      <label className="visually-hidden" htmlFor="rename-input">
+        Learner name
+      </label>
+      <input
+        id="rename-input"
+        ref={input}
+        type="text"
+        value={name}
+        maxLength={80}
+        autoComplete="off"
+        disabled={saving}
+        onChange={(event) => setName(event.target.value)}
+      />
+      <button type="submit" className="button" disabled={saving || !trimmed}>
+        {saving ? 'Saving…' : 'Save name'}
+      </button>
+      <button type="button" className="button button--quiet" disabled={saving} onClick={onCancel}>
+        Cancel
+      </button>
+    </form>
+  );
 }
 
 function BackLink() {
@@ -329,16 +489,24 @@ function CourseRow({
       </div>
       <div className="course__progress">
         <ProgressBar percent={course.percent} state={course.state} label={`${course.title} progress`} />
-        <span className="course__percent">{course.percent}%</span>
+        <span className="course__percent">
+          {course.percent}
+          <small>%</small>
+        </span>
       </div>
       <p className="course__meta">
         <span>
+          <Icon name="book" size={14} />
           {course.completedLessons} of {plural(course.totalLessons, 'lesson')}
         </span>
-        <span>{when}</span>
+        <span className="course__when">
+          <Icon name="clock" size={14} />
+          {when}
+        </span>
       </p>
       {course.unmetPrerequisites.length > 0 && (
         <p className="course__flag">
+          <Icon name="alert" size={14} />
           Started before {course.unmetPrerequisites.map((c) => c.title).join(' and ')} was finished.
         </p>
       )}
@@ -368,19 +536,33 @@ const stepText: Record<PathStep['state'], string> = {
 };
 
 function GoalPathRow({ path }: { path: GoalPath }) {
+  const done = path.steps.filter((s) => s.state === 'done').length;
   return (
-    <li className="path">
+    <li className={`path${path.earned ? ' path--earned' : ''}`}>
       <div className="path__goal">
         <SkillTag skill={path.skillId} earned={path.earned} />
-        <span className="muted">{path.earned ? 'Earned' : 'Not earned yet'}</span>
+        <span className="path__status">{path.earned ? 'Earned' : 'Not earned yet'}</span>
+        {!path.earned && path.steps.length > 0 && (
+          <span className="path__count">
+            {done} of {plural(path.steps.length, 'course')} complete
+          </span>
+        )}
       </div>
       {path.steps.length === 0 ? (
         <p className="muted">No course at this center teaches this yet.</p>
       ) : (
         <ol className="path__steps">
-          {path.steps.map((step) => (
+          {path.steps.map((step, index) => (
             <li key={step.courseId} className={`step step--${step.state}`}>
-              <span className="step__node" aria-hidden="true" />
+              <span
+                className="step__node"
+                aria-hidden="true"
+                style={step.state === 'in_progress' ? ({ '--p': step.percent ?? 0 } as CSSProperties) : undefined}
+              >
+                {step.state === 'done' && <Icon name="check" size={15} />}
+                {(step.state === 'locked' || step.state === 'unavailable') && <Icon name="lock" size={13} />}
+                {(step.state === 'ready' || step.state === 'in_progress') && index + 1}
+              </span>
               <span className="step__text">
                 <span className="step__title">{step.title}</span>
                 <span className="step__state">

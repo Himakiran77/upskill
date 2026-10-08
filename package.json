@@ -1,0 +1,27 @@
+{
+  "name": "upskill",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Upskill: a coach's view of who is on track and who is at risk",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c green,blue \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm run start -w server",
+    "test": "npm run test -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:seed": "npm run db:seed -w server",
+    "db:setup": "npm run db:migrate -w server && npm run db:seed -w server",
+    "move-learner": "npm run move-learner -w server --"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

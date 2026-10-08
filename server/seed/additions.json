@@ -1,0 +1,8 @@
+{
+  "_note": "Rows the four provided files do not contain. No courses are added.",
+  "center": { "id": "blr", "name": "Bengaluru Center", "timezone": "Asia/Kolkata" },
+  "coach": { "id": "coach-meera", "name": "Meera Iyer" },
+  "students": [
+    { "id": "s4", "name": "Kabir Shah", "goals": ["dashboards"] }
+  ]
+}

@@ -1,0 +1,15 @@
+# Postgres only. The app itself runs with npm (see README).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: upskill
+      POSTGRES_PASSWORD: upskill
+      POSTGRES_DB: upskill
+    ports:
+      - "5432:5432"
+    volumes:
+      - upskill-db:/var/lib/postgresql/data
+      - ./server/db/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql:ro
+volumes:
+  upskill-db:
